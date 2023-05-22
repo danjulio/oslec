@@ -24,6 +24,9 @@
  *
  * $Id: super_tone_tx.h,v 1.8 2006/10/24 13:45:28 steveu Exp $
  */
+/*
+ * Modified 4/2023 by Dan Julio to add 4 channel support (off-hook tone generation)
+ */
 
 #if !defined(_SUPER_TONE_TX_H_)
 #define _SUPER_TONE_TX_H_
@@ -45,9 +48,9 @@ typedef struct super_tone_tx_step_s super_tone_tx_step_t;
 
 typedef struct
 {
-    int32_t phase_rate[2];
-    float gain[2];
-    uint32_t phase[2];
+    int32_t phase_rate[4];
+    float gain[4];
+    uint32_t phase[4];
     int current_position;
     int level;
     super_tone_tx_step_t *levels[4];
@@ -56,14 +59,23 @@ typedef struct
 
 struct super_tone_tx_step_s
 {
-    int32_t phase_rate[2];
-    float gain[2];
+    int32_t phase_rate[4];
+    float gain[4];
     int tone;
     int length;
     int cycles;
     super_tone_tx_step_t *next;
     super_tone_tx_step_t *nest;
 };
+
+super_tone_tx_step_t *super_tone_tx_make_step_4(super_tone_tx_step_t *s,
+                                              float f1,
+                                              float f2,
+                                              float f3,
+                                              float f4,
+                                              float level,
+                                              int length,
+                                              int cycles);
 
 super_tone_tx_step_t *super_tone_tx_make_step(super_tone_tx_step_t *s,
                                               float f1,

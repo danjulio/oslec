@@ -24,6 +24,9 @@
  *
  * $Id: super_tone_tx.c,v 1.15 2006/11/19 14:07:25 steveu Exp $
  */
+/*
+ * Modified 4/2023 by Dan Julio to add 4 channel support (off-hook tone generation)
+ */
 
 /*! \file */
 
@@ -49,6 +52,71 @@
 #include "spandsp/complex.h"
 #include "spandsp/dds.h"
 #include "spandsp/super_tone_tx.h"
+
+
+super_tone_tx_step_t *super_tone_tx_make_step_4(super_tone_tx_step_t *s,
+                                              float f1,
+                                              float f2,
+                                              float f3,
+                                              float f4,
+                                              float level,
+                                              int length,
+                                              int cycles)
+{
+	if (s == NULL)
+    {
+        s = (super_tone_tx_step_t *) malloc(sizeof(super_tone_tx_step_t));
+        if (s == NULL)
+            return NULL;
+    }
+    if (f1 >= 1.0)
+    {    
+        s->phase_rate[0] = dds_phase_ratef(f1);
+        s->gain[0] = dds_scaling_dbm0f(level);
+    }
+    else
+    {
+        s->phase_rate[0] = 0;
+        s->gain[0] = 0;
+    }
+    if (f2 >= 1.0)
+    {
+        s->phase_rate[1] = dds_phase_ratef(f2);
+        s->gain[1] = dds_scaling_dbm0f(level);
+    }
+    else
+    {
+        s->phase_rate[1] = 0;
+        s->gain[1] = 0;
+    }
+    if (f3 >= 1.0)
+    {
+        s->phase_rate[2] = dds_phase_ratef(f3);
+        s->gain[2] = dds_scaling_dbm0f(level);
+    }
+    else
+    {
+        s->phase_rate[2] = 0;
+        s->gain[2] = 0;
+    }
+    if (f4 >= 1.0)
+    {
+        s->phase_rate[3] = dds_phase_ratef(f4);
+        s->gain[3] = dds_scaling_dbm0f(level);
+    }
+    else
+    {
+        s->phase_rate[3] = 0;
+        s->gain[3] = 0;
+    }
+    s->tone = (f1 > 0.0);
+    s->length = length*8;
+    s->cycles = cycles;
+    s->next = NULL;
+    s->nest = NULL;
+    return  s;
+}
+/*- End of function --------------------------------------------------------*/
 
 super_tone_tx_step_t *super_tone_tx_make_step(super_tone_tx_step_t *s,
                                               float f1,
@@ -84,6 +152,10 @@ super_tone_tx_step_t *super_tone_tx_make_step(super_tone_tx_step_t *s,
         s->phase_rate[1] = 0;
         s->gain[1] = 0;
     }
+    s->phase_rate[2] = 0;
+    s->gain[2] = 0;
+    s->phase_rate[3] = 0;
+    s->gain[3] = 0;
     s->tone = (f1 > 0.0);
     s->length = length*8;
     s->cycles = cycles;
@@ -144,10 +216,10 @@ int super_tone_tx(super_tone_tx_state_t *s, int16_t amp[], int max_samples)
             if (s->current_position == 0)
             {
                 /* New step - prepare the tone generator */
-                s->phase_rate[0] = tree->phase_rate[0];
-                s->gain[0] = tree->gain[0];
-                s->phase_rate[1] = tree->phase_rate[1];
-                s->gain[1] = tree->gain[1];
+                for (int i=0; i<4; i++) {
+                	s->phase_rate[i] = tree->phase_rate[i];
+                	s->gain[i] = tree->gain[i];
+                }
             }
             len = tree->length - s->current_position;
             if (tree->length == 0)
@@ -172,6 +244,10 @@ int super_tone_tx(super_tone_tx_state_t *s, int16_t amp[], int max_samples)
                     xamp += dds_modf(&(s->phase[0]), s->phase_rate[0], s->gain[0], 0);
                 if (s->phase_rate[1])
                     xamp += dds_modf(&(s->phase[1]), s->phase_rate[1], s->gain[1], 0);
+                if (s->phase_rate[2])
+                    xamp += dds_modf(&(s->phase[2]), s->phase_rate[2], s->gain[2], 0);
+                if (s->phase_rate[3])
+                    xamp += dds_modf(&(s->phase[3]), s->phase_rate[3], s->gain[3], 0);
                 amp[samples] = (int16_t) lrintf(xamp);
             }
             if (s->current_position)
